@@ -33,9 +33,14 @@
   <aside class="cart-panel" id="cart" aria-label="Handlekurv" aria-hidden="true"><header><strong>Din handlekurv</strong><button class="close" id="closeCart" aria-label="Lukk handlekurv">×</button></header><div class="items" id="items"><p>Kurven er tom. Finn en bukett som passer anledningen.</p></div><div class="cart-total"><span>Totalt</span><span id="total">0 kr</span></div><form class="order-form" id="orderForm"><label for="recipient">Mottakers navn<input id="recipient" name="recipient" autocomplete="name" required /></label><label for="deliveryDate">Ønsket leveringsdato<input id="deliveryDate" name="deliveryDate" type="date" required /></label><label for="message">Hilsen (valgfritt)<textarea id="message" name="message" maxlength="180" placeholder="For eksempel: Gratulerer med dagen!"></textarea></label><p class="form-note">Vi bekrefter levering og betaling før buketten bindes.</p><button class="checkout" id="checkout" type="submit" disabled>Send bestilling</button></form><div class="success" id="success" role="status"></div></aside>
   <script>
     const cart=[]; const panel=document.querySelector('#cart'), items=document.querySelector('#items'), count=document.querySelector('#count'), total=document.querySelector('#total'), checkout=document.querySelector('#checkout'), orderForm=document.querySelector('#orderForm'), success=document.querySelector('#success'), deliveryDate=document.querySelector('#deliveryDate');
-    const localToday=new Date();
-    localToday.setMinutes(localToday.getMinutes()-localToday.getTimezoneOffset());
-    deliveryDate.min=localToday.toISOString().slice(0,10);
+    function updateDeliveryDateMin(){
+      const today=new Date();
+      deliveryDate.min=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    }
+    updateDeliveryDateMin();
+    deliveryDate.addEventListener('focus', updateDeliveryDateMin);
+    deliveryDate.addEventListener('input', updateDeliveryDateMin);
+    window.addEventListener('focus', updateDeliveryDateMin);
     const fmt=n=>new Intl.NumberFormat('nb-NO').format(n)+' kr';
     function render(){count.textContent=cart.length; const sum=cart.reduce((a,x)=>a+x.price,0); total.textContent=fmt(sum); checkout.disabled=!cart.length; items.innerHTML=cart.length?cart.map((x,i)=>`<div class="item"><div><strong>${x.name}</strong><br><span>${fmt(x.price)}</span></div><button data-remove="${i}">Fjern</button></div>`).join(''):'<p>Kurven er tom. Finn en bukett som passer anledningen.</p>'; document.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{cart.splice(+b.dataset.remove,1);render()})}
     document.querySelectorAll('.add').forEach(b=>b.onclick=()=>{cart.push({name:b.dataset.name,price:+b.dataset.price});success.classList.remove('show');render();panel.classList.add('open');panel.setAttribute('aria-hidden','false')});
@@ -45,6 +50,8 @@
     orderForm.addEventListener('submit', event=>{
       event.preventDefault();
       if(!cart.length) return;
+      updateDeliveryDateMin();
+      if(!orderForm.reportValidity()) return;
       const recipient=new FormData(orderForm).get('recipient').trim();
       const message=new FormData(orderForm).get('message').trim();
       const date=new Intl.DateTimeFormat('nb-NO',{dateStyle:'long'}).format(new Date(`${deliveryDate.value}T12:00:00`));
